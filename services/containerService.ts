@@ -41,10 +41,11 @@ export function createContainer(
         base: string;
         ui: string[];
         datastore?: string;
+        env?: { [key: string]: string };
     },
     existingFileSystem: FileSystemState
 ): { newFileSystem: FileSystemState; newContainer: Container } {
-    const { prompt, base, ui, datastore } = options;
+    const { prompt, base, ui, datastore, env } = options;
     const newId = `cntr_${crypto.randomUUID().split('-')[0]}`;
     const newPath = `/containers/${newId}/`;
 
@@ -84,11 +85,19 @@ export function createContainer(
 
     newFileSystem[`${newPath}package.json`] = JSON.stringify(finalPackageJson, null, 2);
 
+    // Add .env file if env vars are provided
+    if (env && Object.keys(env).length > 0) {
+        const envContent = Object.entries(env)
+            .map(([key, value]) => `${key}=${value}`)
+            .join('\n');
+        newFileSystem[`${newPath}.env`] = envContent;
+    }
+
     const initialLog: HandoverLog = {
         action: 'create',
         by: 'system_operator',
         at: new Date().toISOString(),
-        details: { prompt, templates: templatesToApply },
+        details: { prompt, templates: templatesToApply, env },
     };
 
     const newContainer: Container = {
@@ -100,6 +109,7 @@ export function createContainer(
         path: newPath,
         chosenTemplates: { base, ui, datastore },
         history: [initialLog],
+        env,
     };
 
     newFileSystem[`${newPath}handover.json`] = JSON.stringify(newContainer, null, 2);

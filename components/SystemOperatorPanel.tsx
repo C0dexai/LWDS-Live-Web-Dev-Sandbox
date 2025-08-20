@@ -26,13 +26,21 @@ const CreateContainerModal: React.FC<{
     const [base, setBase] = useState<string>(TEMPLATE_REGISTRY.base[0]?.id || '');
     const [ui, setUi] = useState<string[]>([]);
     const [datastore, setDatastore] = useState<string>('');
+    const [apiName, setApiName] = useState('');
+    const [apiKey, setApiKey] = useState('');
+    const [showEnv, setShowEnv] = useState(false);
 
     const handleCreate = () => {
+        const env: { [key: string]: string } = {};
+        if (apiName.trim()) env['API_NAME'] = apiName.trim();
+        if (apiKey.trim()) env['API_KEY'] = apiKey.trim();
+
         const { newFileSystem, newContainer } = containerService.createContainer({
             prompt,
             base,
             ui,
             datastore,
+            env,
         }, fileSystem);
         onContainerCreate(newFileSystem, newContainer);
         onClose();
@@ -40,6 +48,9 @@ const CreateContainerModal: React.FC<{
         setPrompt('');
         setUi([]);
         setDatastore('');
+        setApiName('');
+        setApiKey('');
+        setShowEnv(false);
     };
 
     const TemplateSelector: React.FC<{
@@ -84,6 +95,31 @@ const CreateContainerModal: React.FC<{
                 <TemplateSelector title="UI Library (Optional)" templates={TEMPLATE_REGISTRY.ui} selection={ui} onChange={(id) => setUi(u => u.includes(id) ? u.filter(i => i !== id) : [...u, id])} isMulti />
                 <TemplateSelector title="Datastore (Optional)" templates={TEMPLATE_REGISTRY.datastore} selection={datastore} onChange={(id) => setDatastore(d => d === id ? '' : id)} />
                 
+                <div>
+                    <button onClick={() => setShowEnv(!showEnv)} className="w-full flex justify-between items-center p-2 font-semibold text-gray-300 bg-black/20 hover:bg-black/40 transition-colors rounded-t-lg">
+                        <span>Environment Variables (Optional)</span>
+                        <svg className={`w-4 h-4 transform transition-transform ${showEnv ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {showEnv && (
+                        <div className="p-3 bg-black/20 rounded-b-lg space-y-3">
+                            <input
+                                type="text"
+                                value={apiName}
+                                onChange={(e) => setApiName(e.target.value)}
+                                placeholder="API_NAME"
+                                className="w-full bg-black/30 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-[var(--neon-purple)]"
+                            />
+                            <input
+                                type="password"
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                placeholder="API_KEY"
+                                className="w-full bg-black/30 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-[var(--neon-purple)]"
+                            />
+                        </div>
+                    )}
+                </div>
+
                 <button
                     onClick={handleCreate}
                     disabled={!base}
@@ -142,6 +178,19 @@ const ContainerCard: React.FC<{
                 </div>
                 <button onClick={() => onDelete(container.id)} className="p-1 text-gray-500 hover:text-red-500"><XIcon className="h-4 w-4" /></button>
             </div>
+
+            {container.env && Object.keys(container.env).length > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/10 text-xs space-y-1">
+                    {Object.entries(container.env).map(([key, value]) => (
+                        <div key={key} className="flex justify-between font-mono">
+                            <span className="text-gray-400">{key}:</span>
+                            <span className="text-gray-200 truncate ml-2" title={key === 'API_KEY' ? 'API Key is hidden' : value}>
+                                {key === 'API_KEY' ? '••••••••' : value}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <div className="flex gap-2 mt-3">
                 <ActionButton label="Install" onClick={() => onCommand(container.id, 'install')} disabled={isProcessing || container.status !== 'initialized'} command="install" />

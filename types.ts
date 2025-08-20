@@ -28,6 +28,7 @@ export interface Container {
     datastore?: string;
   };
   history: HandoverLog[];
+  env?: { [key: string]: string };
 }
 
 export interface ChatMessage {
